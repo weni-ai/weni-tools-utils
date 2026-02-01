@@ -1,0 +1,125 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "weni-tools-utils"
+version = "0.0.1"
+description = "Modular tools library for AI agents on the Weni platform"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+authors = [
+    {name = "Weni AI", email = "dev@weni.ai"}
+]
+maintainers = [
+    {name = "Weni AI", email = "dev@weni.ai"}
+]
+keywords = [
+    "weni",
+    "vtex",
+    "ecommerce",
+    "ai-agent",
+    "chatbot",
+    "whatsapp",
+    "product-search",
+    "intelligent-search",
+    "tools"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Communications :: Chat",
+    "Typing :: Typed"
+]
+
+dependencies = [
+    "requests>=2.28.0,<3.0.0",
+    "pytz>=2023.3"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+    "responses>=0.23.0",
+    "black==24.10.0",
+    "isort==5.13.2",
+    "mypy>=1.0.0",
+    "types-requests>=2.28.0",
+    "ruff>=0.1.0"
+]
+docs = [
+    "sphinx>=6.0.0",
+    "sphinx-rtd-theme>=1.2.0",
+    "myst-parser>=1.0.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/weni-ai/tools-utils"
+Documentation = "https://github.com/weni-ai/tools-utils#readme"
+Repository = "https://github.com/weni-ai/tools-utils.git"
+Issues = "https://github.com/weni-ai/tools-utils/issues"
+Changelog = "https://github.com/weni-ai/tools-utils/blob/main/CHANGELOG.md"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["weni_utils*"]
+
+[tool.setuptools.package-data]
+"weni_utils.tools" = ["py.typed"]
+
+[tool.black]
+line-length = 100
+target-version = ["py39", "py310", "py311", "py312"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+known_first_party = ["weni_utils"]
+skip_gitignore = true
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = false
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = false
+no_implicit_optional = false
+strict_optional = false
+allow_untyped_globals = true
+ignore_errors = false
+
+[[tool.mypy.overrides]]
+module = "weni_utils.*"
+ignore_errors = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --cov=weni_utils --cov-report=term-missing"
+
+[tool.coverage.run]
+source = ["src/weni_utils"]
+branch = true

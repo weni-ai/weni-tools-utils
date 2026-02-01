@@ -1,0 +1,3 @@
+# Dependências do agente Obramax
+weni-vtex-concierge>=1.0.0
+weni>=0.1.0
