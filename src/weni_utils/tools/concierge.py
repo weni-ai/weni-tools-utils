@@ -98,18 +98,25 @@ class PluginBase:
         return result
 
 
-class ProductConcierge:
+class ProductConcierge(VTEXClient):
     """
-    Classe principal para busca de produtos VTEX.
+    Main class for searching VTEX products.
 
-    Orquestra o fluxo completo de busca:
-    1. Executa hooks before_search dos plugins
-    2. Realiza busca inteligente
-    3. Executa hooks after_search dos plugins
-    4. Verifica disponibilidade de estoque
-    5. Executa hooks after_stock_check dos plugins
-    6. Enriquece produtos com plugins
-    7. Filtra e formata resultado final
+    Inherits from VTEXClient, so you have direct access to all API methods, such as:
+    - intelligent_search()
+    - get_product_by_sku()
+    - get_sku_details()
+    - simulate_cart()
+    - etc.
+
+    Orchestrates the complete product search flow:
+    1. Executes the before_search hooks of plugins
+    2. Performs the intelligent search
+    3. Executes the after_search hooks of plugins
+    4. Checks product stock availability
+    5. Executes the after_stock_check hooks of plugins
+    6. Enriches product information via plugins
+    7. Filters and formats the final result
 
     Example:
         from weni_utils.tools import ProductConcierge
@@ -121,10 +128,14 @@ class ProductConcierge:
             plugins=[Regionalization(), Wholesale()]
         )
 
+        # Full search with plugins and stock verification
         result = concierge.search(
             product_name="furadeira",
             postal_code="01310-100"
         )
+
+        # Or direct access to VTEXClient methods
+        raw_products = concierge.intelligent_search("furadeira")
     """
 
     def __init__(
@@ -141,26 +152,31 @@ class ProductConcierge:
         priority_categories: Optional[List[str]] = None,
     ):
         """
-        Inicializa o ProductConcierge.
+        Initializes the ProductConcierge.
 
         Args:
-            base_url: URL base da API VTEX
-            store_url: URL da loja
-            vtex_app_key: App Key VTEX (opcional)
-            vtex_app_token: App Token VTEX (opcional)
-            plugins: Lista de plugins a utilizar
-            max_products: Máximo de produtos a retornar
-            max_variations: Máximo de variações por produto
-            max_payload_kb: Tamanho máximo do payload em KB
-            utm_source: UTM source para links
-            priority_categories: Categorias com lógica especial de estoque
-            """
-        self.client = VTEXClient(
+            base_url: Base URL for VTEX API
+            store_url: Store URL
+            vtex_app_key: VTEX App Key (optional)
+            vtex_app_token: VTEX App Token (optional)
+            plugins: List of plugins to use
+            max_products: Maximum number of products to return
+            max_variations: Maximum number of variations per product
+            max_payload_kb: Maximum payload size in KB
+            utm_source: UTM source for product links
+            priority_categories: Categories with special stock logic
+        """
+        # Initialize VTEXClient (parent class)
+        super().__init__(
             base_url=base_url,
             store_url=store_url,
             vtex_app_key=vtex_app_key,
             vtex_app_token=vtex_app_token,
         )
+        
+        # Keep self.client pointing to self for backward compatibility
+        self.client = self
+        
         self.stock_manager = StockManager()
         self.plugins = plugins or []
 
@@ -276,6 +292,7 @@ class ProductConcierge:
 
         return result
 
+    # TODO: Mitgrate to client.py
     def _process_products(self, raw_products: List[Dict] , extra_product_fields: Optional[List[str]] = None) -> Dict[str, Dict]:
         """
         Processa produtos brutos da API VTEX.
@@ -285,7 +302,7 @@ class ProductConcierge:
         Args:
             raw_products: Lista de produtos brutos da API VTEX
             extra_product_fields: Campos extras do produto VTEX a incluir no resultado
-                (ex: ["clusterHighlights"]. Só será incluído se existir produto.)
+                (ex: ["clusterHighlights"] ou ["items.0.images"] ou ["items.0.images.0.imageUrl"]. Só será incluído se existir produto.)
         Returns:
             Dicionário com produtos estruturados {nome_produto: dados}
         """
@@ -379,15 +396,55 @@ class ProductConcierge:
                     "categories": categories,
                 }
                 
-                # Inclui campos extras solicitados (ex: clusterHighlights)
+                
                 if extra_product_fields:
                     for field in extra_product_fields:
-                        if field in product:
-                            product_data[field] = product[field]
+                        # Support for: ("items.0.images", "images")
+                        if isinstance(field, tuple):
+                            path, alias = field
+                        else:
+                            path = field
+                            alias = field.split(".")[-1]
+
+                        value = self._get_nested_value(product, path)
+
+                        # Always return the field, even if it doesn't exist
+                        product_data[alias] = value
+
                 products_structured[product_name_vtex] = product_data
                 product_count += 1
 
         return products_structured
+
+    def _get_nested_value(self, data, path: str):
+        """
+        Get a nested value from a dictionary.
+        """
+        current = data
+
+        for part in path.split("."):
+            if isinstance(current, list):
+                try:
+                    index = int(part)
+                    current = current[index]
+                except (ValueError, IndexError):
+                    return None
+
+            elif isinstance(current, dict):
+                if part not in current:
+                    return None
+                current = current[part]
+
+            else:
+                return None
+
+        return current
+    
+    def _normalize_field_name(self, field_path: str) -> str:
+        """
+        Normalize a field name.
+        """
+        return field_path.split(".")[-1]
 
     def _build_result(self, products: Dict[str, Dict], context: SearchContext) -> Dict[str, Any]:
         """

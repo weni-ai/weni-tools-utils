@@ -4,9 +4,11 @@ Tests for ProductConcierge
 
 import pytest
 from unittest.mock import Mock, patch, MagicMock
+
 from weni_utils.tools import ProductConcierge
 from weni_utils.tools.context import SearchContext
 from weni_utils.tools.plugins import PluginBase
+
 from dotenv import load_dotenv
 import os
 
@@ -59,13 +61,14 @@ class TestProductConcierge:
         assert concierge.utm_source == "test_source"
 
     def test_search(self):
-        """Test search: intelligent_search (client) + _process_products (concierge)."""
+        """Test search: intelligent_search + _process_products (both on ProductConcierge)."""
         concierge = ProductConcierge(
             base_url=os.getenv("VTEX_BASE_URL"),
             store_url=os.getenv("VTEX_STORE_URL")
         )
-        raw_result = concierge.client.intelligent_search(product_name="colchon espuma")
-        formatted_result = concierge._process_products(raw_result)
+        # Agora acessa intelligent_search diretamente (sem .client)
+        raw_result = concierge.intelligent_search(product_name="ceramica")
+        formatted_result = concierge._process_products(raw_result, extra_product_fields=["clusterHighlights", "items.0.images", "imagemteste"])
         print(formatted_result)
         assert raw_result is not None
         assert len(raw_result) > 0
