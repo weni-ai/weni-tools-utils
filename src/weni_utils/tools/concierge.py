@@ -98,7 +98,7 @@ class PluginBase:
         return result
 
 
-class ProductConcierge:
+class ProductConcierge(VTEXClient, StockManager, PluginBase):
     """
     Main class for VTEX product search.
 
@@ -155,13 +155,7 @@ class ProductConcierge:
             utm_source: UTM source for links
             priority_categories: Categories with special stock logic
         """
-        self.client = VTEXClient(
-            base_url=base_url,
-            store_url=store_url,
-            vtex_app_key=vtex_app_key,
-            vtex_app_token=vtex_app_token,
-        )
-        self.stock_manager = StockManager()
+        super().__init__(base_url=base_url, store_url=store_url, vtex_app_key=vtex_app_key, vtex_app_token=vtex_app_token)
         self.plugins = plugins or []
 
         # Configurations
@@ -215,18 +209,17 @@ class ProductConcierge:
                 setattr(context, key, value)
 
         # 2. Execute before_search hooks
-        for plugin in self.plugins:
-            context = plugin.before_search(context, self.client)
+        context = self.before_search(context, self)
 
         # 3. Perform intelligent search (returns raw data)
-        raw_products = self.client.intelligent_search(
+        raw_products = self.intelligent_search(
             product_name=context.product_name,
             brand_name=context.brand_name,
             region_id=context.region_id,
         )
 
         # 4. Process raw products (format, filter, limit)
-        products = self.client.process_products(
+        products = self.process_products(
             raw_products=raw_products,
             max_products=self.max_products,
             max_variations=self.max_variations,
@@ -234,41 +227,36 @@ class ProductConcierge:
         )
 
         # 5. Execute after_search hooks
-        for plugin in self.plugins:
-            products = plugin.after_search(products, context, self.client)
+        products = self.after_search(products, context, self)
 
         # 6. Check stock availability
         if context.sellers:
             # Use simulation with specific sellers
-            products_with_stock = self.stock_manager.check_availability_with_sellers(
-                client=self.client,
+            products_with_stock = self.check_availability_with_sellers(
+                client=self,
                 products=products,
                 context=context,
                 priority_categories=self.priority_categories,
             )
         else:
             # Use simple simulation
-            products_with_stock = self.stock_manager.check_availability_simple(
-                client=self.client, products=products, context=context
+            products_with_stock = self.check_availability_simple(
+                client=self, products=products, context=context
             )
 
         # 7. Execute after_stock_check hooks
-        for plugin in self.plugins:
-            products_with_stock = plugin.after_stock_check(
-                products_with_stock, context, self.client
-            )
+        products_with_stock = self.after_stock_check(products_with_stock, context, self)
 
         # 8. Filter products, keeping only those with stock
-        filtered_products = self.stock_manager.filter_products_with_stock(
+        filtered_products = self.filter_products_with_stock(
             products, products_with_stock
         )
 
         # 9. Execute enrichment hooks
-        for plugin in self.plugins:
-            filtered_products = plugin.enrich_products(filtered_products, context, self.client)
+        filtered_products = self.enrich_products(filtered_products, context, self)
 
         # 10. Limit payload size
-        filtered_products = self.stock_manager.limit_payload_size(
+        filtered_products = self.limit_payload_size(
             filtered_products, self.max_payload_kb
         )
 
@@ -276,8 +264,7 @@ class ProductConcierge:
         result = self._build_result(filtered_products, context)
 
         # 12. Execute finalization hooks
-        for plugin in self.plugins:
-            result = plugin.finalize_result(result, context)
+        result = self.finalize_result(result, context)
 
         return result
 
@@ -317,7 +304,7 @@ class ProductConcierge:
         Returns:
             Product data or None
         """
-        return self.client.get_product_by_sku(sku_id)
+        return self.get_product_by_sku(sku_id)
 
     def get_sku_details(self, sku_id: str) -> Dict:
         """
@@ -329,4 +316,4 @@ class ProductConcierge:
         Returns:
             SKU details
         """
-        return self.client.get_sku_details(sku_id)
+        return self.get_sku_details(sku_id)

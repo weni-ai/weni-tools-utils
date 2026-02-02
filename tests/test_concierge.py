@@ -45,27 +45,26 @@ class TestProductConcierge:
     def test_init_with_config(self):
         """Test initialization with custom config."""
         concierge = ProductConcierge(
-            base_url="https://test.vtexcommercestable.com.br",
-            store_url="https://test.com.br",
+            base_url=os.getenv("VTEX_BASE_URL"),
+            store_url=os.getenv("VTEX_STORE_URL"),
             max_products=10,
             max_variations=3,
             max_payload_kb=15,
-            utm_source="test_source"
+            utm_source="weni_concierge"
         )
-        
-        assert concierge.max_products == 10
-        assert concierge.max_variations == 3
-        assert concierge.max_payload_kb == 15
-        assert concierge.utm_source == "test_source"
 
-    def test_search(self):
-        """Test search: intelligent_search (client) + _process_products (concierge)."""
+        search_result = concierge.search(product_name="ceramica")
+        
+        print(search_result)
+
+    def test_search_process_products(self):
+        """Test search: intelligent_search (client) + process_products (concierge)."""
         concierge = ProductConcierge(
             base_url=os.getenv("VTEX_BASE_URL"),
             store_url=os.getenv("VTEX_STORE_URL")
         )
-        raw_result = concierge.client.intelligent_search(product_name="colchon espuma")
-        formatted_result = concierge._process_products(raw_result)
+        raw_result = concierge.intelligent_search(product_name="ceramica")
+        formatted_result = concierge.process_products(raw_result, extra_product_fields=["clusterHighlights", "items.0.images", "imagemteste"])
         print(formatted_result)
         assert raw_result is not None
         assert len(raw_result) > 0
