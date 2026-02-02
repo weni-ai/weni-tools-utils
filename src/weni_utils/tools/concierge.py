@@ -121,10 +121,14 @@ class ProductConcierge(VTEXClient, StockManager, PluginBase):
             plugins=[Regionalization(), Wholesale()]
         )
 
+        # Full search with plugins and stock verification
         result = concierge.search(
             product_name="furadeira",
             postal_code="01310-100"
         )
+
+        # Or direct access to VTEXClient methods
+        raw_products = concierge.intelligent_search("furadeira")
     """
 
     def __init__(
@@ -155,7 +159,11 @@ class ProductConcierge(VTEXClient, StockManager, PluginBase):
             utm_source: UTM source for links
             priority_categories: Categories with special stock logic
         """
-        super().__init__(base_url=base_url, store_url=store_url, vtex_app_key=vtex_app_key, vtex_app_token=vtex_app_token)
+        super().__init__(base_url=base_url, 
+                        store_url=store_url, 
+                        vtex_app_key=vtex_app_key, 
+                        vtex_app_token=vtex_app_token
+                        )
         self.plugins = plugins or []
 
         # Configurations

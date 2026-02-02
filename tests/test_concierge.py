@@ -4,9 +4,11 @@ Tests for ProductConcierge
 
 import pytest
 from unittest.mock import Mock, patch, MagicMock
+
 from weni_utils.tools import ProductConcierge
 from weni_utils.tools.context import SearchContext
 from weni_utils.tools.plugins import PluginBase
+
 from dotenv import load_dotenv
 import os
 
