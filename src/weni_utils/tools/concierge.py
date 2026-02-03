@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional
 from .client import VTEXClient
 from .context import SearchContext
 from .stock import StockManager
+from .utils import Utils
 
 
 class PluginBase:
@@ -98,7 +99,7 @@ class PluginBase:
         return result
 
 
-class ProductConcierge(VTEXClient, StockManager, PluginBase):
+class ProductConcierge(Utils, VTEXClient, StockManager, PluginBase):
     """
     Main class for VTEX product search.
 
