@@ -390,47 +390,64 @@ class VTEXClient():
             print(f"ERROR: Error searching SKU {sku_id}: {e}")
             return None
 
-    def get_orders_by_document(self, document: str, incomplete_orders: bool = False) -> Dict:
+    def _fetch_orders(self, document: str, include_incomplete: bool = False) -> Tuple[Optional[Dict], Optional[str]]:
+        """
+        Fetch orders from OMS API.
+
+        Args:
+            document: Customer document
+            include_incomplete: Whether to include incomplete orders
+
+        Returns:
+            Tuple of (orders_data, error_message)
+        """
+        url = f"{self.base_url}/api/oms/pvt/orders?q={document}"
+        if include_incomplete:
+            url += "&incompleteOrders=true"
+
+        try:
+            response = requests.get(url, headers=self._get_auth_headers(), timeout=self.timeout)
+            response.raise_for_status()
+            return response.json(), None
+        except requests.exceptions.RequestException as e:
+            return None, str(e)
+
+    def get_orders_by_document(self, document: str, include_incomplete: bool = False) -> Dict:
         """
         Search orders by document.
 
         Args:
             document: Customer document
+            include_incomplete: Whether to also fetch incomplete orders
 
         Returns:
             Dictionary with orders list
         """
         if not document:
-            return {"list": []}
+            return {"error": "Document is required", "list": []}
 
-        # Search complete orders
-        url = f"{self.base_url}/api/oms/pvt/orders?q={document}"
+        # Fetch complete orders
+        orders_data, error = self._fetch_orders(document)
+        if error:
+            print(f"ERROR: Error searching orders: {error}")
+            return {"error": f"Error searching orders: {error}", "list": []}
 
-        try:
-            response = requests.get(url, headers=self._get_auth_headers(), timeout=self.timeout)
-            response.raise_for_status()
-            orders_data = response.json()
-        except requests.exceptions.RequestException as e:
-            print(f"ERROR: Error searching orders: {e}")
-            orders_data = {"list": []}
+        if not include_incomplete:
+            return orders_data
 
-        # Search incomplete orders
-        url_incomplete = f"{self.base_url}/api/oms/pvt/orders?q={document}&incompleteOrders={str(incomplete_orders).lower()}"
+        # Fetch incomplete orders and merge
+        incomplete_data, error = self._fetch_orders(document, include_incomplete=True)
+        if error:
+            print(f"ERROR: Error searching incomplete orders: {error}")
+            return orders_data
 
-        try:
-            response_incomplete = requests.get(
-                url_incomplete, headers=self._get_auth_headers(), timeout=self.timeout
-            )
-            response_incomplete.raise_for_status()
-            orders_data_incomplete = response_incomplete.json()
-
-            if orders_data_incomplete and "list" in orders_data_incomplete:
-                if "list" not in orders_data:
-                    orders_data["list"] = []
-                orders_data["list"].extend(orders_data_incomplete["list"])
-
-        except requests.exceptions.RequestException as e:
-            print(f"ERROR: Error searching incomplete orders: {e}")
+        # Merge avoiding duplicates by order ID
+        existing_ids = {order.get("orderId") for order in orders_data.get("list", [])}
+        new_orders = [
+            order for order in incomplete_data.get("list", [])
+            if order.get("orderId") not in existing_ids
+        ]
+        orders_data.setdefault("list", []).extend(new_orders)
 
         return orders_data
 
