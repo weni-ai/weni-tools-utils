@@ -8,6 +8,7 @@ class Utils:
         max_variations: int = 5,
         utm_source: Optional[str] = "weni_concierge",
         extra_product_fields: Optional[List] = None,
+        remove_specifications: Optional[List[str]] = None,
     ) -> Dict[str, Dict]:
         """
         Process raw products from the VTEX API.
@@ -22,6 +23,8 @@ class Utils:
             extra_product_fields: Extra fields to include in the result.
                 Can be a string or tuple (path, alias).
                 Examples: ["clusterHighlights"], [("items.0.images", "images")]
+            remove_specifications: List of specifications to remove from the result.
+                Examples: ["sellerId"]
 
         Returns:
             Dictionary with structured products {product_name: data}
@@ -57,7 +60,8 @@ class Utils:
                 "description": self._truncate_description(product.get("description", "")),
                 "brand": product.get("brand", ""),
                 "specification_groups": self._format_specifications(
-                    product.get("specificationGroups", [])
+                    product.get("specificationGroups", []),
+                    remove_specifications=remove_specifications
                 ),
                 "productLink": product_link,
                 "imageUrl": self._get_product_image(product),
@@ -295,7 +299,7 @@ class Utils:
         """
         return self._format_name_value_pairs(variation_items)
 
-    def _format_specifications(self, spec_groups: List[Dict], max_groups: int = 3, max_specifications_per_group: int = 5) -> List[Dict]:
+    def _format_specifications(self, spec_groups: List[Dict], max_groups: int = 3, max_specifications_per_group: int = 5, remove_specifications: Optional[List[str]] = None) -> List[Dict]:
         """
         Format specification groups in a simplified way.
 
@@ -303,10 +307,19 @@ class Utils:
             spec_groups: Product specification groups
             max_groups: Maximum number of groups to include
             max_specifications_per_group: Maximum number of specifications per group
+            remove_specifications: List of specification names to exclude from result
 
         Returns:
             Simplified specifications list
         """
+        remove_set = set(remove_specifications or [])
+
+        def filter_specs(specs: List[Dict]) -> List[Dict]:
+            """Filter out unwanted specifications."""
+            if not remove_set:
+                return specs
+            return [s for s in specs if s.get("name") not in remove_set]
+
         # Try to find the "allSpecifications" group first
         all_specs_group = next(
             (g for g in spec_groups if g.get("name") == "allSpecifications" and g.get("specifications")),
@@ -314,10 +327,11 @@ class Utils:
         )
 
         if all_specs_group:
+            filtered = filter_specs(all_specs_group["specifications"])
             return [
                 {
                     "name": "allSpecifications",
-                    "specifications": self._format_name_value_pairs(all_specs_group["specifications"]),
+                    "specifications": self._format_name_value_pairs(filtered),
                 }
             ]
 
@@ -325,7 +339,9 @@ class Utils:
         return [
             {
                 "name": group.get("name", ""),
-                "specifications": self._format_name_value_pairs(group["specifications"][:max_specifications_per_group]),
+                "specifications": self._format_name_value_pairs(
+                    filter_specs(group["specifications"])[:max_specifications_per_group]
+                ),
             }
             for group in spec_groups[:max_groups]
             if group.get("specifications")
