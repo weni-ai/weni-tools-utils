@@ -179,7 +179,11 @@ class VTEXClient():
             return []
 
     def cart_simulation(
-        self, items: List[Dict], country: str = "BRA", postal_code: Optional[str] = None
+        self,
+        items: List[Dict],
+        country: str = "BRA",
+        postal_code: Optional[str] = None,
+        sales_channel: Optional[int] = None,
     ) -> Dict:
         """
         Perform cart simulation to check availability.
@@ -188,14 +192,16 @@ class VTEXClient():
             items: List of items [{id, quantity, seller}]
             country: Country code
             postal_code: Postal code (optional)
+            sales_channel: Sales channel ID (optional)
 
         Returns:
             Simulation response
         """
         url = f"{self.base_url}/api/checkout/pub/orderForms/simulation"
+        if sales_channel is not None:
+            url += f"?sc={sales_channel}"
 
-        payload = {"items": items, "country": country}
-
+        payload: Dict = {"items": items, "country": country}
         if postal_code:
             payload["postalCode"] = postal_code
 
@@ -208,64 +214,75 @@ class VTEXClient():
             print(f"ERROR: Cart simulation error: {e}")
             return {"items": []}
 
+    def _build_batch_items(
+        self,
+        skus: List[Dict[str, int]],
+        sellers: List[str],
+        max_quantity_per_seller: int = 8000,
+        max_total_quantity: int = 24000,
+    ) -> List[Dict]:
+        """
+        Build items list for batch simulation (SKUs × sellers cross-product).
+
+        Args:
+            skus: List of SKUs with quantities
+            sellers: List of sellers
+            max_quantity_per_seller: Maximum quantity per seller
+            max_total_quantity: Maximum total quantity
+
+        Returns:
+            List of items for simulation
+        """
+        num_sellers = len(sellers)
+        items = []
+
+        for sku in skus:
+            sku_id = sku.get("sku_id")
+            quantity = int(sku.get("quantity", 1))
+
+            if not sku_id:
+                continue
+
+            total_quantity = min(quantity * num_sellers, max_total_quantity)
+            quantity_per_seller = min(total_quantity // num_sellers, max_quantity_per_seller)
+
+            items.extend(
+                {"id": sku_id, "quantity": quantity_per_seller, "seller": seller}
+                for seller in sellers
+            )
+
+        return items
+
     def batch_simulation(
         self,
-        sku_id: str,
-        quantity: int,
+        skus: List[Dict[str, int]],
         sellers: List[str],
         postal_code: str,
         max_quantity_per_seller: int = 8000,
         max_total_quantity: int = 24000,
     ) -> Optional[Dict]:
         """
-        Simulate a specific SKU with multiple sellers (used for regionalization).
+        Simulate multiple SKUs with multiple sellers (used for regionalization).
 
         Args:
-            sku_id: SKU ID
-            quantity: Desired quantity
+            skus: List of SKUs with quantities, e.g. [{"sku_id": "123", "quantity": 2}, ...]
             sellers: List of sellers
             postal_code: Postal code
             max_quantity_per_seller: Maximum quantity per seller
             max_total_quantity: Maximum total quantity
 
         Returns:
-            Best simulation result or None
+            Simulation result or None
         """
-        quantity = int(quantity)
-
-        # Calculate quantity per seller
-        if len(sellers) > 1:
-            total_quantity = min(quantity * len(sellers), max_total_quantity)
-            quantity_per_seller = min(total_quantity // len(sellers), max_quantity_per_seller)
-        else:
-            quantity_per_seller = min(quantity, max_quantity_per_seller)
-
-        items = [
-            {"id": sku_id, "quantity": quantity_per_seller, "seller": seller} for seller in sellers
-        ]
-
-        url = f"{self.base_url}/_v/api/simulations-batches?sc=1&RnbBehavior=1"
-        payload = {"items": items, "country": "BRA", "postalCode": postal_code}
-
-        try:
-            response = requests.post(url, json=payload, timeout=self.timeout)
-            response.raise_for_status()
-            simulation_data = response.json()
-
-            data_content = simulation_data.get("data", {})
-            if not data_content:
-                return None
-
-            sku_simulations = data_content.get(sku_id, [])
-            if not sku_simulations:
-                return None
-
-            # Return simulation with highest quantity
-            return max(sku_simulations, key=lambda x: x.get("quantity", 0))
-
-        except requests.exceptions.RequestException as e:
-            print(f"ERROR: Batch simulation error: {e}")
+        if not sellers or not skus:
             return None
+
+        items = self._build_batch_items(skus, sellers, max_quantity_per_seller, max_total_quantity)
+        if not items:
+            return None
+
+        result = self.cart_simulation(items, postal_code=postal_code, sales_channel=1)
+        return result if result.get("items") else None
 
     def get_region(
         self, postal_code: str, trade_policy: int, country_code: str
@@ -275,7 +292,8 @@ class VTEXClient():
 
         Args:
             postal_code: Postal code
-
+            trade_policy: Trade policy / sales channel ID
+            country_code: Country code
         Returns:
             Tuple (region_id, error_message, sellers)
         """
@@ -289,7 +307,7 @@ class VTEXClient():
             if not regions_data:
                 return (
                     None,
-                    "We don't serve your region. Please visit our stores in person.",
+                    "We don't serve your region.",
                     [],
                 )
 
@@ -299,7 +317,7 @@ class VTEXClient():
             if not sellers:
                 return (
                     None,
-                    "We don't serve your region. Please visit our stores in person.",
+                    "We don't serve your region.",
                     [],
                 )
 
