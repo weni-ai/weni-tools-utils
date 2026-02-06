@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from weni_utils.tools.proxy import ProxyRequest
 from weni_utils.tools.client import OrderDataProxy
 
@@ -28,17 +28,25 @@ class TestProxyRequest:
 
         print(result)
 
-    def test_get_order_id_proxy(self):
-        """Test making a proxy request to get order by ID."""
-        # Create a mock context
+    @patch("weni_utils.tools.client.ProxyRequest")
+    def test_get_order_id_proxy(self, mock_proxy_request_class):
+        """Test making a proxy request to get order by ID with mocked proxy."""
         mock_context = MagicMock()
-        mock_context.project = {"auth_token": ""}
+        mock_context.project = {"auth_token": "fake-token"}
         mock_context.credentials = {}
         mock_context.parameters = {}
         mock_context.globals = {}
         mock_context.contact = {}
         mock_context.constants = {}
 
+        expected_response = {"orderId": "123", "email": "example@example.com", "status": "invoiced"}
+        mock_proxy_request_class.return_value.make_proxy_request.return_value = expected_response
+
         order_data_proxy = OrderDataProxy(context=mock_context)
         result = order_data_proxy.get_order_details_proxy(email="example@example.com")
-        print(result)
+
+        assert result == expected_response
+        mock_proxy_request_class.return_value.make_proxy_request.assert_called_once_with(
+            path="/api/oms/pvt/orders/?q=example@example.com&per_page=10",
+            method="GET",
+        )
