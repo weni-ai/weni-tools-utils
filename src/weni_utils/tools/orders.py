@@ -9,6 +9,8 @@ from typing import Any, Dict, Optional
 
 import pytz
 
+from tzlocal.windows_tz import win_tz
+
 from .client import VTEXClient
 
 
@@ -32,7 +34,6 @@ class OrderConcierge:
         store_url: str,
         vtex_app_key: Optional[str] = None,
         vtex_app_token: Optional[str] = None,
-        timezone: str = "America/Sao_Paulo",
     ):
         """
         Initialize OrderConcierge.
@@ -42,10 +43,6 @@ class OrderConcierge:
             store_url: Store URL
             vtex_app_key: VTEX App Key (optional)
             vtex_app_token: VTEX App Token (optional)
-            timezone: Timezone for date/time formatting (default: America/Sao_Paulo)
-        
-        Raises:
-            ValueError: If the timezone is invalid
         """
         self.client = VTEXClient(
             base_url=base_url,
@@ -53,14 +50,21 @@ class OrderConcierge:
             vtex_app_key=vtex_app_key,
             vtex_app_token=vtex_app_token,
         )
-        
-        # Validate timezone
-        if timezone not in pytz.all_timezones:
-            raise ValueError(
-                f"Invalid timezone: '{timezone}'. "
-                f"Use pytz.all_timezones to see available options."
-            )
-        self.timezone = pytz.timezone(timezone)
+        self.timezone = self._get_timezone()
+
+
+    def _get_timezone(self):
+        """
+        Get store timezone from VTEX (Windows name) and return a pytz timezone object.
+        """
+        order_form = self.client.create_order_form()
+        store_preferences = order_form.get("storePreferences", {})
+
+        windows_tz = store_preferences.get("timeZone") or "E. South America Standard Time"
+        iana_tz = win_tz.get(windows_tz)
+        if iana_tz is None:
+            iana_tz = win_tz["E. South America Standard Time"]
+        return pytz.timezone(iana_tz)
 
     def _convert_cents(self, data: Any) -> Any:
         """
@@ -127,7 +131,7 @@ class OrderConcierge:
         return {
             "orders": converted_orders,
             "current_time": datetime.now(self.timezone).strftime(
-                "%d/%m/%Y %H:%M:%S"
+                "%Y/%m/%d %H:%M:%S"
             ),
         }
 
@@ -151,6 +155,6 @@ class OrderConcierge:
         return {
             "order": converted_order,
             "current_time": datetime.now(self.timezone).strftime(
-                "%d/%m/%Y %H:%M:%S"
+                "%Y/%m/%d %H:%M:%S"
             ),
         }
