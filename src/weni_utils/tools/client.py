@@ -443,7 +443,9 @@ class VTEXClient(ProxyRequest, Utils):
         except requests.exceptions.RequestException as e:
             return None, str(e)
 
-    def list_orders(self, document: str = None, email: str = None, include_incomplete: bool = False) -> Dict:
+    def list_orders(
+        self, document: str = None, email: str = None, include_incomplete: bool = False
+    ) -> Dict:
         """
         List orders by document or email.
 

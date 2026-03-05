@@ -3,10 +3,24 @@ from urllib.parse import urlencode
 
 # Keys that represent currency values in cents (VTEX API)
 CURRENCY_KEYS = (
-    "totalValue", "value", "totals", "itemPrice", "sellingPrice",
-    "price", "listPrice", "costPrice", "basePrice", "fixedPrice",
-    "shippingEstimate", "tax", "discount", "total", "subtotal",
-    "freight", "marketingData", "paymentData",
+    "totalValue",
+    "value",
+    "totals",
+    "itemPrice",
+    "sellingPrice",
+    "price",
+    "listPrice",
+    "costPrice",
+    "basePrice",
+    "fixedPrice",
+    "shippingEstimate",
+    "tax",
+    "discount",
+    "total",
+    "subtotal",
+    "freight",
+    "marketingData",
+    "paymentData",
 )
 
 
@@ -33,8 +47,15 @@ def convert_cents(data: Any) -> Any:
     def _convert(obj: Any) -> Any:
         if isinstance(obj, dict):
             return {
-                k: _convert(v) if isinstance(v, (dict, list)) else
-                (round(v / 100, 2) if v is not None and isinstance(v, (int, float)) and _is_currency_key(k) else v)
+                k: (
+                    _convert(v)
+                    if isinstance(v, (dict, list))
+                    else (
+                        round(v / 100, 2)
+                        if v is not None and isinstance(v, (int, float)) and _is_currency_key(k)
+                        else v
+                    )
+                )
                 for k, v in obj.items()
             }
         if isinstance(obj, list):

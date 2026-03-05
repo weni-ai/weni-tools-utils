@@ -65,7 +65,9 @@ class OrderConcierge:
             iana_tz = win_tz["E. South America Standard Time"]
         return pytz.timezone(iana_tz)
 
-    def search_orders(self, document: str = None, email: str = None, incomplete_orders: bool = False) -> Dict[str, Any]:
+    def search_orders(
+        self, document: str = None, email: str = None, incomplete_orders: bool = False
+    ) -> Dict[str, Any]:
         """
         Search orders by document.
 
