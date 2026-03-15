@@ -8,12 +8,9 @@ Run from project root:
 import os
 from unittest.mock import MagicMock, patch
 
-from dotenv import load_dotenv
 from weni.context import Context
 
 from weni_utils.tools.orders import OrderDataProxy
-
-load_dotenv()
 
 
 def make_context(document=None, order_id=None, email=None):
