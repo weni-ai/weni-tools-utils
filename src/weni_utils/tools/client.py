@@ -58,8 +58,8 @@ class VTEXClient(ProxyRequest, Utils):
 
     Example:
         client = VTEXClient(
-            base_url="https://store.vtexcommercestable.com.br",
-            store_url="https://store.com.br"
+            base_url_vtex="https://store.vtexcommercestable.com.br",
+            store_url_vtex="https://store.com.br"
         )
 
         products = client.intelligent_search("drill")
@@ -67,8 +67,8 @@ class VTEXClient(ProxyRequest, Utils):
 
     def __init__(
         self,
-        base_url: str,
-        store_url: Optional[str] = None,
+        base_url_vtex: str,
+        store_url_vtex: str,
         vtex_app_key: Optional[str] = None,
         vtex_app_token: Optional[str] = None,
         timeout: int = 30,
@@ -77,16 +77,16 @@ class VTEXClient(ProxyRequest, Utils):
         Initialize the VTEX client.
 
         Args:
-            base_url: VTEX API base URL (e.g., https://store.vtexcommercestable.com.br)
-            store_url: Store URL (e.g., https://store.com.br) (optional)
+            base_url_vtex: VTEX API base URL (e.g., https://store.vtexcommercestable.com.br)
+            store_url_vtex: Store URL (e.g., https://store.com.br)
             vtex_app_key: App Key for authenticated APIs (optional)
             vtex_app_token: App Token for authenticated APIs (optional)
             timeout: Request timeout in seconds
         """
-        self.base_url = base_url.rstrip("/")
-        self.store_url = store_url.rstrip("/") if store_url else None
-        if not self._validate_base_url_and_store_url():
-            raise ValueError("Base URL or store URL is invalid")
+        self.base_url_vtex = base_url_vtex.rstrip("/")
+        self.store_url_vtex = store_url_vtex.rstrip("/")
+        if not self._validate_base_url_and_store_url_vtex():
+            raise ValueError("Base URL or store URL VTEX is invalid")
 
         self.vtex_app_key = vtex_app_key
         self.vtex_app_token = vtex_app_token
@@ -105,18 +105,20 @@ class VTEXClient(ProxyRequest, Utils):
 
         return headers
 
-    def _validate_base_url_and_store_url(self) -> bool:
-        """Validate if the base URL and store URL are valid"""
-        if not self.base_url:
+    def _validate_base_url_and_store_url_vtex(self) -> bool:
+        """Validate if the base URL and store URL VTEX are valid"""
+        if not self.base_url_vtex or not self.store_url_vtex:
             return False
 
-        if not self.base_url.startswith("https://"):
+        if not self.base_url_vtex.startswith("https://") or not self.store_url_vtex.startswith(
+            "https://"
+        ):
             return False
 
-        if not self.base_url.endswith((".vtexcommercestable.com.br", "myvtex.com")):
+        if not self.base_url_vtex.endswith((".vtexcommercestable.com.br", "myvtex.com")):
             return False
 
-        if self.store_url and not self.store_url.startswith("https://"):
+        if self.store_url_vtex and not self.store_url_vtex.startswith("https://"):
             return False
 
         return True
@@ -166,7 +168,7 @@ class VTEXClient(ProxyRequest, Utils):
             path = f"{path}/"
 
         search_url = (
-            f"{self.base_url}/api/io/_v/api/intelligent-search/product_search/{path}"
+            f"{self.base_url_vtex}/api/io/_v/api/intelligent-search/product_search/{path}"
             f"?query={query}&simulationBehavior=default"
             f"&hideUnavailableItems={str(hide_unavailable).lower()}"
             f"&allowRedirect={str(allow_redirect).lower()}"
@@ -204,7 +206,7 @@ class VTEXClient(ProxyRequest, Utils):
         Returns:
             Simulation response
         """
-        url = f"{self.base_url}/api/checkout/pub/orderForms/simulation"
+        url = f"{self.base_url_vtex}/api/checkout/pub/orderForms/simulation"
         if sales_channel is not None:
             url += f"?sc={sales_channel}"
 
@@ -304,7 +306,7 @@ class VTEXClient(ProxyRequest, Utils):
         Returns:
             Tuple (region_id, error_message, sellers)
         """
-        region_url = f"{self.base_url}/api/checkout/pub/regions?country={country_code}&postalCode={postal_code}&sc={trade_policy}"
+        region_url = f"{self.base_url_vtex}/api/checkout/pub/regions?country={country_code}&postalCode={postal_code}&sc={trade_policy}"
 
         try:
             response = requests.get(region_url, timeout=self.timeout)
@@ -363,7 +365,7 @@ class VTEXClient(ProxyRequest, Utils):
         if not self.vtex_app_key or not self.vtex_app_token:
             return default_response
 
-        url = f"{self.base_url}/api/catalog/pvt/stockkeepingunit/{sku_id}"
+        url = f"{self.base_url_vtex}/api/catalog/pvt/stockkeepingunit/{sku_id}"
 
         try:
             response = requests.get(url, headers=self._get_auth_headers(), timeout=self.timeout)
@@ -398,7 +400,7 @@ class VTEXClient(ProxyRequest, Utils):
         Returns:
             Product data or None
         """
-        search_url = f"{self.base_url}/api/io/_v/api/intelligent-search/product_search/?query=sku.id:{sku_id}"
+        search_url = f"{self.base_url_vtex}/api/io/_v/api/intelligent-search/product_search/?query=sku.id:{sku_id}"
 
         try:
             response = requests.get(search_url, timeout=self.timeout)
@@ -429,9 +431,9 @@ class VTEXClient(ProxyRequest, Utils):
             Tuple of (orders_data, error_message)
         """
         if document:
-            url = f"{self.base_url}/api/oms/pvt/orders?q={document}"
+            url = f"{self.base_url_vtex}/api/oms/pvt/orders?q={document}"
         elif email:
-            url = f"{self.base_url}/api/oms/pvt/orders?q={email}"
+            url = f"{self.base_url_vtex}/api/oms/pvt/orders?q={email}"
         else:
             return None, "Document or email is required"
 
@@ -492,7 +494,7 @@ class VTEXClient(ProxyRequest, Utils):
         """
         Create an order form.
         """
-        url = f"{self.base_url}/api/checkout/pub/orderForms?sc={sales_channel}"
+        url = f"{self.base_url_vtex}/api/checkout/pub/orderForms?sc={sales_channel}"
         try:
             response = requests.post(url, headers=self._get_auth_headers(), timeout=self.timeout)
             response.raise_for_status()
@@ -517,7 +519,7 @@ class VTEXClient(ProxyRequest, Utils):
         if not order_id:
             return None
 
-        url = f"{self.base_url}/api/oms/pvt/orders/{order_id}"
+        url = f"{self.base_url_vtex}/api/oms/pvt/orders/{order_id}"
 
         try:
             response = requests.get(url, headers=self._get_auth_headers(), timeout=self.timeout)
@@ -573,7 +575,7 @@ class VTEXClient(ProxyRequest, Utils):
             limited_variations = variations[:max_variations]
 
             # Build product link
-            product_link = f"{self.store_url}{product.get('link', '')}"
+            product_link = f"{self.store_url_vtex}{product.get('link', '')}"
             if utm_source:
                 product_link += f"?utm_source={utm_source}"
 
