@@ -5,11 +5,14 @@ Plugin for clients that need to send products as carousel on WhatsApp.
 Formats products in XML and sends via Weni API.
 """
 
+import logging
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import requests
 
 from .base import PluginBase
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from ..client import VTEXClient
@@ -243,7 +246,7 @@ class Carousel(PluginBase):
             return True
 
         except Exception as e:
-            print(f"ERROR: Error sending carousel: {e}")
+            logger.error("Carousel send failed for contact %s: %s", contact_urn, e)
             return False
 
     def send_carousel_for_skus(
