@@ -262,8 +262,16 @@ class TestHelperMethods:
                 "Price": 100.0,
                 "Installments": [
                     {"PaymentSystemName": "Visa Crédito", "NumberOfInstallments": 6, "Value": 18.0},
-                    {"PaymentSystemName": "Mastercard Débito", "NumberOfInstallments": 1, "Value": 99.0},
-                    {"PaymentSystemName": "Visa à vista", "NumberOfInstallments": 1, "Value": 100.0},
+                    {
+                        "PaymentSystemName": "Mastercard Débito",
+                        "NumberOfInstallments": 1,
+                        "Value": 99.0,
+                    },
+                    {
+                        "PaymentSystemName": "Visa à vista",
+                        "NumberOfInstallments": 1,
+                        "Value": 100.0,
+                    },
                 ],
             }
         }

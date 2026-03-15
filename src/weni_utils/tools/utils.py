@@ -391,7 +391,10 @@ class Utils:
         # Search for credit card price (single payment)
         for installment in installments:
             if (
-                any(card in (installment.get("PaymentSystemName") or "").lower() for card in ["visa", "mastercard", "american express"])
+                any(
+                    card in (installment.get("PaymentSystemName") or "").lower()
+                    for card in ["visa", "mastercard", "american express"]
+                )
                 and installment.get("NumberOfInstallments") == 1
             ):
                 prices["credit_card_price"] = installment.get("Value")
