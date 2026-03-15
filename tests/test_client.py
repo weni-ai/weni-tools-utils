@@ -611,7 +611,7 @@ class TestIntelligentSearch:
         assert headers["Cookie"] == "vtex_segment=abc123encoded"
 
     @patch("weni_utils.tools.client.requests.get")
-    def test_vtex_segment_skips_path_segments(self, mock_get):
+    def test_vtex_segment_keeps_path_segments(self, mock_get):
         mock_get.return_value = Mock(
             status_code=200,
             json=Mock(return_value={"products": []}),
@@ -625,9 +625,11 @@ class TestIntelligentSearch:
             cluster_id=99,
         )
         url = mock_get.call_args[0][0]
-        assert "trade-policy" not in url
-        assert "region-id" not in url
-        assert "productClusterIds" not in url
+        assert "trade-policy/2" in url
+        assert "region-id/v123" in url
+        assert "productClusterIds/99" in url
+        headers = mock_get.call_args[1].get("headers")
+        assert headers["Cookie"] == "vtex_segment=abc123"
 
     @patch("weni_utils.tools.client.requests.get")
     def test_no_vtex_segment_no_cookie_header(self, mock_get):

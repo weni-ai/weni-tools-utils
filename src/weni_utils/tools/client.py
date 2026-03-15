@@ -155,7 +155,6 @@ class VTEXClient(ProxyRequest, Utils):
         # Build URL with or without regionalization
         query = f"{product_name} {brand_name}".strip()
 
-        # Build path segments (skip when vtex_segment handles regionalization)
         path_segments = []
         if trade_policy_id:
             path_segments.append(f"trade-policy/{trade_policy_id}")
